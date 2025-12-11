@@ -27,8 +27,8 @@ A production-ready REST API for managing notes with user authentication, built w
 # Start both backend and PostgreSQL
 docker-compose up -d
 
-# View logs
-docker-compose logs -f backend
+# View logs (both services)
+docker-compose logs -f
 
 # Access the API
 open http://localhost:8000/docs
@@ -86,14 +86,28 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 ## Deployment to AWS ECS
 
-This application can be deployed to AWS ECS Fargate.
+**Architecture:**
+- **Backend**: ECS Fargate (Docker container)
+- **Database**: RDS PostgreSQL (managed service, not a container)
+- **Image Registry**: ECR
 
-**Quick Overview:**
-1. Create RDS PostgreSQL database
-2. Push Docker image to AWS ECR
-3. Create ECS cluster with Fargate
-4. Configure security groups
-5. Deploy ECS service
+**Deployment Steps:**
+
+1. **Create RDS PostgreSQL database** and note the connection endpoint
+2. **Build and push Docker image to ECR**
+   ```bash
+   docker build -t notes-api .
+   docker tag notes-api:latest YOUR_ACCOUNT.dkr.ecr.REGION.amazonaws.com/notes-api:latest
+   docker push YOUR_ACCOUNT.dkr.ecr.REGION.amazonaws.com/notes-api:latest
+   ```
+3. **Create ECS cluster** (Fargate) and task definition using your ECR image
+4. **Set environment variables** in task definition:
+   - `DATABASE_URL=postgresql://user:pass@rds-endpoint:5432/notes`
+   - `SECRET_KEY=your-secure-key-here`
+5. **Configure security groups** (ECS → RDS on port 5432, Internet → ECS on port 8000)
+6. **Deploy ECS service** with desired task count
+
+**Note:** Local dev uses `docker-compose` (both backend + database containers). AWS production uses ECS + RDS (backend container + managed database).
 
 ## Project Structure
 
